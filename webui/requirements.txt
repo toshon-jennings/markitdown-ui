@@ -1,0 +1,6 @@
+# MarkItDown Web UI dependencies
+# Installs the local markitdown package (with all converters) plus the web server.
+../packages/markitdown[all]
+fastapi>=0.110
+uvicorn[standard]>=0.27
+python-multipart>=0.0.9

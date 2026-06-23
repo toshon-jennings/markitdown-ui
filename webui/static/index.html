@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MarkItDownUI</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <img class="brand-mark" src="/static/logo.jpeg" alt="MarkItDownUI logo" width="26" height="26" />
+        <span class="brand-name">MarkItDownUI</span>
+      </div>
+      <div class="topbar-actions">
+        <span class="version" id="version"></span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1>Convert anything to Markdown.</h1>
+      <p class="subtitle">Drop a document, spreadsheet, PDF, image, audio, or video file — or paste a link. Clean Markdown, instantly.</p>
+    </section>
+
+    <div class="segmented" role="tablist">
+      <button class="seg-btn active" data-mode="file" role="tab">File</button>
+      <button class="seg-btn" data-mode="url" role="tab">URL</button>
+    </div>
+
+    <!-- File mode -->
+    <section class="panel" id="panel-file">
+      <label class="dropzone" id="dropzone" tabindex="0">
+        <input type="file" id="fileInput" hidden />
+        <div class="dropzone-icon" aria-hidden="true">
+          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 16V4" />
+            <path d="m6 10 6-6 6 6" />
+            <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+          </svg>
+        </div>
+        <div class="dropzone-text">
+          <strong>Drag &amp; drop a file</strong>
+          <span>or click to browse</span>
+        </div>
+        <div class="dropzone-formats">PDF · DOCX · PPTX · XLSX · HTML · images · audio · video · ZIP · and more</div>
+      </label>
+    </section>
+
+    <!-- URL mode -->
+    <section class="panel hidden" id="panel-url">
+      <form class="url-form" id="urlForm">
+        <input type="url" id="urlInput" class="url-input" placeholder="https://example.com/article" autocomplete="off" />
+        <button type="submit" class="btn btn-primary">Convert</button>
+      </form>
+      <p class="url-hint">Works with web pages, Wikipedia, YouTube, RSS feeds, and Bing results.</p>
+    </section>
+
+    <!-- Result -->
+    <section class="result hidden" id="result">
+      <div class="result-head">
+        <div class="result-meta">
+          <span class="result-title" id="resultTitle">Result</span>
+          <span class="result-sub" id="resultSub"></span>
+        </div>
+        <div class="result-toolbar">
+          <div class="segmented small" role="tablist">
+            <button class="seg-btn active" data-view="preview">Preview</button>
+            <button class="seg-btn" data-view="raw">Markdown</button>
+          </div>
+          <button class="btn btn-ghost" id="copyBtn">Copy</button>
+          <button class="btn btn-ghost" id="downloadBtn">Download</button>
+        </div>
+      </div>
+      <div class="result-body">
+        <article class="markdown-preview" id="preview"></article>
+        <pre class="markdown-raw hidden" id="raw"><code></code></pre>
+      </div>
+    </section>
+
+    <!-- States -->
+    <div class="status hidden" id="loading">
+      <span class="spinner" aria-hidden="true"></span>
+      <span id="loadingText">Converting…</span>
+    </div>
+    <div class="status error hidden" id="error"></div>
+  </main>
+
+  <footer class="footer">
+    <span>Local conversion · nothing leaves your machine for files.</span>
+    <nav class="footer-links">
+      <a href="https://github.com/toshon-jennings/markitdown-ui" target="_blank" rel="noopener noreferrer">MarkItDownUI on GitHub</a>
+      <span class="dot" aria-hidden="true">·</span>
+      <a href="https://github.com/microsoft/markitdown" target="_blank" rel="noopener noreferrer">Powered by Microsoft MarkItDown</a>
+    </nav>
+  </footer>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="/static/app.js" defer></script>
+</body>
+</html>
