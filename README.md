@@ -1,5 +1,5 @@
 # MarkItDownUI
-MarkItDownUI is a simple GUI for [MarkItDown](https://github.com/microsoft/markitdown) by Microsoft, designed by Claude Opus 4.8, and built using Opus 4.8 and ChatGPT-5.5.
+MarkItDownUI is a simple open-source GUI for [MarkItDown](https://github.com/microsoft/markitdown) by Microsoft, designed by Claude Opus 4.8, and built using Opus 4.8 and ChatGPT-5.5.
 
 ---
 
