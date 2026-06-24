@@ -1,4 +1,17 @@
-# MarkItDown
+# MarkItDownUI
+
+MarkItDownUI is this repo's local, polished web surface for Microsoft's
+MarkItDown converter. Version 1.0.0 wraps the Python library in a FastAPI
+server and a dependency-free single-page interface: drag in a document, upload a
+spreadsheet or PDF, convert audio/video-supported inputs, or paste a URL and get
+copyable/downloadable Markdown back from a localhost-only workflow.
+
+The UI lives in [`webui/`](webui/), serves on `http://127.0.0.1:8920` by
+default, and keeps file conversion local to your machine. The upstream
+MarkItDown library copy follows below for converter capabilities, installation
+details, optional extras, plugins, and security notes.
+
+## Upstream MarkItDown
 
 [![PyPI](https://img.shields.io/pypi/v/markitdown.svg)](https://pypi.org/project/markitdown/)
 ![PyPI - Downloads](https://img.shields.io/pypi/dd/markitdown)

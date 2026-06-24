@@ -17,6 +17,12 @@
         <span class="brand-name">MarkItDownUI</span>
       </div>
       <div class="topbar-actions">
+        <span class="vision-status hidden" id="visionStatus"></span>
+        <div class="theme-control" role="group" aria-label="Color theme">
+          <button type="button" class="theme-choice" data-theme-choice="system">System</button>
+          <button type="button" class="theme-choice" data-theme-choice="light">Light</button>
+          <button type="button" class="theme-choice" data-theme-choice="dark">Dark</button>
+        </div>
         <span class="version" id="version"></span>
       </div>
     </div>
@@ -32,6 +38,18 @@
       <button class="seg-btn active" data-mode="file" role="tab">File</button>
       <button class="seg-btn" data-mode="url" role="tab">URL</button>
     </div>
+
+    <section class="readiness" id="readiness" aria-label="Conversion capabilities">
+      <div class="readiness-item pending" id="exiftoolStatus">
+        <strong>ExifTool</strong>
+        <span>Checking metadata support…</span>
+        <button type="button" class="readiness-action hidden" id="installExiftoolBtn">Install</button>
+      </div>
+      <div class="readiness-item pending" id="visionCapabilityStatus">
+        <strong>Image vision</strong>
+        <span>Checking description support…</span>
+      </div>
+    </section>
 
     <!-- File mode -->
     <section class="panel" id="panel-file">
@@ -92,7 +110,7 @@
   </main>
 
   <footer class="footer">
-    <span>Local conversion · nothing leaves your machine for files.</span>
+    <span id="privacyNotice">Local conversion · nothing leaves your machine for files.</span>
     <nav class="footer-links">
       <a href="https://github.com/toshon-jennings/markitdown-ui" target="_blank" rel="noopener noreferrer">MarkItDownUI on GitHub</a>
       <span class="dot" aria-hidden="true">·</span>
