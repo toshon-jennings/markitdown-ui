@@ -16,6 +16,7 @@ import logging
 import os
 import re
 import socket
+import shutil
 from pathlib import Path
 from urllib.parse import urlparse, urljoin
 
@@ -23,6 +24,7 @@ import requests
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from PIL import Image
 
 from markitdown import (
     MarkItDown,
@@ -49,6 +51,30 @@ UI_VERSION = _ui_version()
 # Cap how much remote content we'll pull in for a URL conversion.
 MAX_URL_BYTES = 50 * 1024 * 1024  # 50 MB
 MAX_REDIRECTS = 5
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
+EXIFTOOL_CANDIDATE_PATHS = (
+    "/opt/homebrew/bin/exiftool",
+    "/usr/local/bin/exiftool",
+    "/usr/bin/exiftool",
+)
+
+
+def _find_exiftool() -> str | None:
+    candidate = shutil.which("exiftool")
+    if candidate:
+        return candidate
+    for candidate_path in EXIFTOOL_CANDIDATE_PATHS:
+        if Path(candidate_path).is_file():
+            return candidate_path
+    return None
+
+
+def _make_markitdown() -> MarkItDown:
+    exiftool_path = _find_exiftool()
+    kwargs = {"enable_plugins": False}
+    if exiftool_path:
+        kwargs["exiftool_path"] = exiftool_path
+    return MarkItDown(**kwargs)
 
 
 def _assert_public_host(host: str | None) -> None:
@@ -147,12 +173,55 @@ def _read_capped(response: requests.Response) -> tuple[io.BytesIO, StreamInfo]:
         url=response.url,
     )
 
+
+def _is_image_input(filename: str | None, content_type: str | None, extension: str | None = None) -> bool:
+    if content_type and content_type.lower().startswith("image/"):
+        return True
+    ext = (extension or os.path.splitext(filename or "")[1]).lower()
+    return ext in IMAGE_EXTENSIONS
+
+
+def _image_metadata_markdown(data: bytes, filename: str, content_type: str | None) -> str:
+    lines = [
+        f"# {filename}",
+        "",
+        "No embedded text was found in this image.",
+        "",
+        "## Image metadata",
+        "",
+        f"- Filename: `{filename}`",
+    ]
+    if content_type:
+        lines.append(f"- MIME type: `{content_type}`")
+    lines.append(f"- File size: {len(data):,} bytes")
+
+    try:
+        with Image.open(io.BytesIO(data)) as image:
+            lines.extend([
+                f"- Format: {image.format or 'unknown'}",
+                f"- Dimensions: {image.width} x {image.height}px",
+                f"- Color mode: `{image.mode}`",
+            ])
+    except Exception:
+        lines.append("- Dimensions: unavailable")
+
+    return "\n".join(lines)
+
 app = FastAPI(title="MarkItDownUI", docs_url=None, redoc_url=None)
 
-# A single shared converter instance. Plugins are off by default to keep the
-# local UI predictable; flip to True if you rely on third-party converters.
-_md = MarkItDown(enable_plugins=False)
 
+@app.middleware("http")
+async def add_embed_headers(request, call_next):
+    if request.method == "OPTIONS":
+        response = JSONResponse({})
+    else:
+        response = await call_next(request)
+    response.headers["Access-Control-Allow-Origin"] = request.headers.get("origin", "*")
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    response.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
+    response.headers["Vary"] = "Origin"
+    return response
 
 @app.get("/", response_class=HTMLResponse)
 def index() -> HTMLResponse:
@@ -173,8 +242,33 @@ def health() -> JSONResponse:
             "ok": True,
             "ui_version": UI_VERSION,
             "markitdown_version": markitdown_version,
+            "capabilities": _capabilities(),
         }
     )
+
+
+def _capabilities() -> dict:
+    exiftool_path = _find_exiftool()
+    return {
+        "exiftool": {
+            "available": bool(exiftool_path),
+            "path": exiftool_path,
+            "install_hint": "brew install exiftool",
+            "purpose": "Extracts richer camera and file metadata from images.",
+            "required": False,
+        },
+        "vision": {
+            "available": False,
+            "purpose": "Generates visual descriptions and OCR-like extraction for image uploads.",
+            "required": False,
+            "install_hint": "Use the Perci embedded surface with an OpenRouter key, or configure a local OpenAI-compatible vision provider.",
+        },
+    }
+
+
+@app.get("/api/capabilities")
+def capabilities() -> JSONResponse:
+    return JSONResponse(_capabilities())
 
 
 @app.post("/api/convert")
@@ -193,7 +287,7 @@ async def convert(file: UploadFile = File(...)) -> JSONResponse:
     )
 
     try:
-        result = _md.convert_stream(io.BytesIO(data), stream_info=stream_info)
+        result = _make_markitdown().convert_stream(io.BytesIO(data), stream_info=stream_info)
     except UnsupportedFormatException as exc:
         raise HTTPException(
             status_code=415,
@@ -205,12 +299,16 @@ async def convert(file: UploadFile = File(...)) -> JSONResponse:
         logger.exception("File conversion failed for %r", filename)
         raise HTTPException(status_code=500, detail="Unexpected error while converting file.")
 
+    markdown = result.markdown
+    if not markdown.strip() and _is_image_input(filename, file.content_type, extension):
+        markdown = _image_metadata_markdown(data, filename, file.content_type)
+
     return JSONResponse(
         {
             "filename": filename,
             "title": result.title,
-            "markdown": result.markdown,
-            "chars": len(result.markdown),
+            "markdown": markdown,
+            "chars": len(markdown),
         }
     )
 
@@ -229,7 +327,7 @@ async def convert_url(url: str = Form(...)) -> JSONResponse:
     response = _safe_get(url)
     try:
         buffer, stream_info = _read_capped(response)
-        result = _md.convert_stream(buffer, stream_info=stream_info)
+        result = _make_markitdown().convert_stream(buffer, stream_info=stream_info)
     except HTTPException:
         raise
     except MarkItDownException as exc:
@@ -243,12 +341,16 @@ async def convert_url(url: str = Form(...)) -> JSONResponse:
     finally:
         response.close()
 
+    markdown = result.markdown
+    if not markdown.strip() and _is_image_input(stream_info.filename, stream_info.mimetype, stream_info.extension):
+        markdown = _image_metadata_markdown(buffer.getvalue(), stream_info.filename or url, stream_info.mimetype)
+
     return JSONResponse(
         {
             "filename": url,
             "title": result.title,
-            "markdown": result.markdown,
-            "chars": len(result.markdown),
+            "markdown": markdown,
+            "chars": len(markdown),
         }
     )
 
