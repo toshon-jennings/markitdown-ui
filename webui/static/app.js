@@ -177,7 +177,12 @@ document.querySelectorAll("[data-view]").forEach((btn) => {
 });
 
 // ---------- Dropzone ----------
-dropzone.addEventListener("click", () => fileInput.click());
+// No click listener needed here: #fileInput is nested inside the #dropzone
+// <label>, so the browser already forwards a native click on the label to
+// the input and opens the file picker. An explicit fileInput.click() call
+// here used to fire a second, redundant picker-open request for the same
+// click, which raced with the native one (especially over Electron's
+// webview IPC) and made the very first upload attempt silently fail.
 dropzone.addEventListener("keydown", (e) => {
   if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); }
 });
